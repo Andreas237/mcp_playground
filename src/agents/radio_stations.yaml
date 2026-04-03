@@ -1,0 +1,6 @@
+talk_radio:
+  npr: https://npr-ice.streamguys1.com/live.mp3
+  kexp: http://kexp-mp3-128.streamguys1.com/kexp128
+music:
+  france_indie: http://icecast.radiofrance.fr/fip-midfi.mp3
+  radio_swiss_jazz: http://stream.srg-ssr.ch/m/rsj/aacp\_96
