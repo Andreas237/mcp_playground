@@ -3,6 +3,18 @@ from langsmith import traceable
 from loguru import logger
 from langchain.chat_models import init_chat_model
 from langchain_mistralai.chat_models import ChatMistralAI
+from claude_agent_sdk import (
+    ClaudeAgentOptions,
+    ClaudeSDKClient,
+    create_sdk_mcp_server,
+    tool,
+)
+from langsmith.integrations.claude_agent_sdk import configure_claude_agent_sdk
+
+import asyncio
+from typing import Any
+
+configure_claude_agent_sdk()
 
 
 class DemoMistral:
