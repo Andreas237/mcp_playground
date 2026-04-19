@@ -30,7 +30,8 @@ JUDGE_CONTEXTS = """
                   You are the judge of an assistant. 
                   To judge, you will be provided the same query the assistant recieved, and the answer the assistant gave.
                   You should judge the assistant based on accuracy, precision, and conciseness.
-                  Your judgement should be a number from 1-10 where 10 is perfect and 1 is inaccurate and long.
+                  Your judgement should be a number from 1-10 where 10 is perfect and 1 is 
+                  Do not return anything but a single number.
                   """
 
 base_message_judge = [("system", JUDGE_CONTEXTS)]
@@ -88,7 +89,7 @@ async def main():
                 f"Here is the prompt given to the assistant '{prompt}',and the answer from the assistant we are testing '{ai_message.content}'",
             )
         ]
-        scores.append([judge.invoke(judge_messages) for judge in judges])
+        scores.append([judge.invoke(judge_messages).content for judge in judges])
         # get the scores as a tuple
         # append them to the scores list
     # debug the scores

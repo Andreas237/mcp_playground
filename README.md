@@ -84,3 +84,28 @@ uv run llm_testing_ground/main.py
 ```
 
 See [llm_testing_ground/README.md](llm_testing_ground/README.md) for full details.
+
+---
+
+### llm_evals
+
+LLM-as-judge evaluation harness: a model under test answers a set of prompts, then a panel of judge models (Mistral, NVIDIA Nemotron, Claude Haiku) scores each response on accuracy, precision, and conciseness (1–10).
+
+**Install Python dependencies (from repo root):**
+```bash
+uv sync
+```
+
+**`.env` file** — create `.env` in the `llm_evals/` directory:
+```dotenv
+ANTHROPIC_API_KEY=<your_key>
+MISTRAL_API_KEY=<your_key>
+NVIDIA_API_KEY=<your_key>
+```
+
+**Run:**
+```bash
+uv run llm_evals/main.py
+```
+
+See [llm_evals/README.md](llm_evals/README.md) for full details.
