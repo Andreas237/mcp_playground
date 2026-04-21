@@ -1060,6 +1060,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "dotenv" },
     { name = "ffmpeg" },
+    { name = "httpx" },
     { name = "langchain", extra = ["anthropic", "openai"] },
     { name = "langchain-mistralai" },
     { name = "langchain-nvidia-ai-endpoints" },
@@ -1067,6 +1068,7 @@ dependencies = [
     { name = "loguru" },
     { name = "mistralai" },
     { name = "pyradio" },
+    { name = "python-backoff" },
     { name = "python-dotenv" },
     { name = "python-ffmpeg" },
     { name = "pyyaml" },
@@ -1080,6 +1082,7 @@ dependencies = [
 requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "ffmpeg", specifier = ">=1.4" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", extras = ["anthropic", "openai"], specifier = ">=1.2.15" },
     { name = "langchain-mistralai", specifier = ">=1.1.2" },
     { name = "langchain-nvidia-ai-endpoints", specifier = ">=1.2.1" },
@@ -1087,6 +1090,7 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "mistralai", specifier = ">=2.2.0" },
     { name = "pyradio", specifier = ">=0.5.2" },
+    { name = "python-backoff", specifier = ">=2.3.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "python-ffmpeg", specifier = ">=2.0.12" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -1649,6 +1653,15 @@ name = "pyradio"
 version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/97/8e/447b6dafc8a89fa064378467eeb6d294c2e13fa2e69e697bb82c95480d2f/pyradio-0.5.2.tar.gz", hash = "sha256:e051353bf300e3689fcd7844a576e867b62f8e48262aefd8b77087dcf17cf4cd", size = 7066, upload-time = "2013-09-20T05:01:12.718Z" }
+
+[[package]]
+name = "python-backoff"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/5a/c8a85e7b0019ba54e46756b0b02ead4c054e098dc23c4fdeaa80996a6872/python_backoff-2.3.1.tar.gz", hash = "sha256:54d67283073afa5deb3bb3f8b335952747c5869e7d8f76bf5a87da42bd86c4d6", size = 18715, upload-time = "2025-12-18T21:30:09.845Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3c/ea/a3adc8d2cda57480cd7020ae6857f57b17ce1720bb6a652bbb0516fa4dff/python_backoff-2.3.1-py3-none-any.whl", hash = "sha256:d3cfcc0938ec78683edc530bbeb5f5c08252477a40270516497d2bb500da392b", size = 15106, upload-time = "2025-12-18T21:30:08.601Z" },
+]
 
 [[package]]
 name = "python-dateutil"

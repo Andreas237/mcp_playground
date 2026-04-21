@@ -1,5 +1,7 @@
-from os import getenv
+import time
 import asyncio
+import backoff
+from httpx import HTTPStatusError
 from loguru import logger
 from tqdm import tqdm
 from utils import load_api_keys
@@ -71,12 +73,55 @@ def get_llm_judges(model_ids: list[str] = []):
     return judges
 
 
-async def main():
-    load_api_keys()
-    llm_under_test = get_llm_under_test()
-    judges = get_llm_judges()
+@backoff.on_exception(backoff.expo, HTTPStatusError, base=5, max_value=90)
+async def test_prompt(llm_under_test=None, judges=None, prompt: str = None):
+    ai_message = await llm_under_test.ainvoke(
+        base_message_llm_under_test + [("human", prompt)]
+    )
+    judge_message = base_message_judge + [
+        (
+            "human",
+            f"Here is the prompt given to the assistant '{prompt}',and the answer from the assistant we are testing '{ai_message.content}'",
+        )
+    ]
+    return [(await judge.ainvoke(judge_message)).content for judge in judges]
+
+
+async def run_eval_asynch(llm_under_test=None, judges=None):
+    """
+    use the list of test prompts returned by get_test_prompts()
+    as inputs to an LLM, called llm_under_test.  Use every answer to the prompt
+    provided by llm_under_test, and the prompt, as input to a panel of judges.
+    The judges return a score, low is bad high is good.
+
+    Do this asynchronously.  Account for rate limiting using the backoff library.
+    """
+    if judges == None or llm_under_test == None:
+        logger.error("You must provide pre-initialized judges and llm_under_test")
+        exit(1)
+
+    print(f"[async] started at {time.strftime('%X')}")
+    async with asyncio.TaskGroup() as tg:
+        for prompt in tqdm(get_test_prompts()):
+            tg.create_task(
+                test_prompt(llm_under_test=llm_under_test, judges=judges, prompt=prompt)
+            )
+    print(f"[async] finished at {time.strftime('%X')}")
+
+
+@backoff.on_exception(backoff.expo, HTTPStatusError, max_time=90)
+async def run_eval_synchro(llm_under_test=None, judges=None):
+    """
+    use the list of test prompts returned by get_test_prompts()
+    as inputs to an LLM, called llm_under_test.  Use every answer to the prompt
+    provided by llm_under_test, and the prompt, as input to a panel of judges.
+    The judges return a score, low is bad high is good.
+    """
+    if judges == None or llm_under_test == None:
+        logger.error("You must provide pre-initialized judges and llm_under_test")
+        exit(1)
     scores = []
-    # TODO: this should be async
+    print(f"[synchro] started at {time.strftime('%X')}")
     for prompt in tqdm(get_test_prompts()):
         # get the answer from the llm under test
         ai_message = llm_under_test.invoke(
@@ -90,11 +135,17 @@ async def main():
             )
         ]
         scores.append([judge.invoke(judge_messages).content for judge in judges])
-        # get the scores as a tuple
-        # append them to the scores list
-    # debug the scores
-    for score in scores:
-        logger.debug(score)
+    print(f"[synchro] finished at {time.strftime('%X')}")
+
+
+async def main():
+    load_api_keys()
+    llm_under_test = get_llm_under_test()
+    judges = get_llm_judges()
+
+    await run_eval_asynch(llm_under_test=llm_under_test, judges=judges)
+
+    await run_eval_synchro(llm_under_test=llm_under_test, judges=judges)
 
 
 if __name__ == "__main__":
