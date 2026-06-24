@@ -4,7 +4,6 @@ from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from loguru import logger
 
-# Anthropic key may be stored under different names depending on how the environment was set up.
 _ANTHROPIC_KEY_ALIASES = ["ANTHROPIC_API_KEY", "OPENWEBUI_ANTHROPIC_API_KEY", "OPENWEBUI_ANTHROPIC_API_KEY_1"]
 
 
