@@ -68,7 +68,7 @@ Models are defined as **profiles** in [`config.toml`](config.toml). Each profile
 |---------|----------|-------|---------|--------|
 | `claude` (default) | Anthropic | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | ✅ Verified end-to-end (full toolset) |
 | `devstral` | OpenAI-compatible (`api.mistral.ai/v1`) | `devstral-small-latest` | `MISTRAL_API_KEY` | ✅ Verified end-to-end (full toolset) |
-| `nvidia` | OpenAI-compatible (NIM) | `nvidia/llama-3.3-nemotron-super-49b-v1` | `NVIDIA_API_KEY` | ⚠️ Tool-calling works with few tools; returns empty on the full toolset (see caveat below) |
+| `nvidia` | OpenAI-compatible (NIM) | `nvidia/llama-3.3-nemotron-super-49b-v1.5` | `NVIDIA_API_KEY` | ✅ Verified full-toolset agent loop. (The earlier `…-v1` returned empty on the full toolset; **v1.5 fixes it** — see caveat below.) |
 
 > **Why Devstral uses the `openai` provider, not `mistral`:** this project pins `mistralai>=2.2.0` (for langchain), which is incompatible with Strands' native `MistralModel` (it needs `mistralai<2.0.0`). Mistral's API is OpenAI-compatible, so the `devstral` profile points the `openai` provider at `https://api.mistral.ai/v1` — no `mistralai` SDK required, and tool calling works.
 
@@ -86,7 +86,7 @@ api_key_env = "NVIDIA_API_KEY"
 max_tokens  = 8096
 ```
 
-> **Tool-calling matters.** This is an *agent* — it depends on the model issuing tool calls. Claude handles the full toolset well (verified on the Q8–Q10 smoke tests). Some OpenAI-compatible models return an empty response when given many tools at once: `nvidia/llama-3.3-nemotron-super-49b-v1` calls a *single* tool correctly but returns a blank completion when handed all ~16 tools the agent exposes. If a model answers without ever calling a tool (or returns nothing), suspect weak/partial tool-call support. See [tests/README.md](tests/README.md#trying-different-models) for the steps to verify a new model before trusting it.
+> **Tool-calling matters, and it varies by model *version*.** This is an *agent* — it depends on the model issuing tool calls. Claude, Devstral, and `nemotron-super-49b-v1.5` all drive the full ~16-tool set. But the earlier `nvidia/llama-3.3-nemotron-super-49b-v1` (no `.5`) returned a blank completion when handed all the tools at once — fixed in v1.5. The lesson: a model answering without ever calling a tool (or returning nothing) means weak/partial tool-call support, and a point release can change that entirely. Always verify a new model/version before trusting it — see [tests/README.md](tests/README.md#trying-different-models).
 
 ---
 

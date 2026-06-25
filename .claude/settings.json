@@ -50,7 +50,8 @@
       "Bash(pkill -9 -f \"colorado_budget/src/servers\")",
       "Bash(pkill -9 -f \"colorado_budget/src/agent.py\")",
       "Bash(PYTHONPATH=/home/ace/work/mcp_playground/colorado_budget/src timeout 180 python /tmp/claude-1000/-home-ace-work-mcp-playground/d2cbbb94-8f33-46c5-b4d9-3cb57f6feb12/scratchpad/repro_full.py)",
-      "Bash(.venv/bin/python -m pip install 'mistralai>=1.8.2,<2.0.0')"
+      "Bash(.venv/bin/python -m pip install 'mistralai>=1.8.2,<2.0.0')",
+      "Bash(/home/ace/work/mcp_playground/.venv/bin/python /tmp/claude-1000/-home-ace-work-mcp-playground/d2cbbb94-8f33-46c5-b4d9-3cb57f6feb12/scratchpad/repro_full.py)"
     ]
   }
 }

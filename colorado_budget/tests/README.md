@@ -129,13 +129,14 @@ python agent.py --profile <name> "What are the main fund types in Colorado's sta
 Watch the `Tool #N:` lines in the output — they confirm the model is actually
 calling tools (agent-mode) rather than answering from its own weights (LLM-mode).
 
-> **Known caveat — many tools at once.** The full agent exposes ~16 tools (4 MCP
-> servers + 2 inline). Claude and Devstral handle this fine. Some
-> OpenAI-compatible models (observed with `nvidia/llama-3.3-nemotron-super-49b-v1`)
-> handle a *single* tool correctly but return an **empty completion** when given
-> the full toolset — no error, no tool call, just a blank answer. If you see an
-> empty answer, suspect tool-count/schema limits in the model, not the agent. Try
-> a stronger tool-use model, or trim the tool list in `agent.py` for that profile.
+> **Known caveat — many tools at once (version-sensitive).** The full agent
+> exposes ~16 tools (4 MCP servers + 2 inline). Claude, Devstral, and
+> `nvidia/llama-3.3-nemotron-super-49b-v1.5` handle this fine. The earlier
+> `…-super-49b-v1` (no `.5`) handled a *single* tool but returned an **empty
+> completion** on the full toolset — no error, no tool call, just a blank answer.
+> A point release fixed it. If you see an empty answer, suspect tool-count/schema
+> limits in that specific model/version: try a newer version or stronger tool-use
+> model, or trim the tool list in `agent.py` for that profile.
 
 ---
 

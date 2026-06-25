@@ -104,7 +104,7 @@ max_tokens  = 8096
 # Browse model IDs at https://build.nvidia.com/models
 [profiles.nvidia]
 provider    = "openai"
-model_id    = "nvidia/llama-3.3-nemotron-super-49b-v1"
+model_id    = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
 base_url    = "https://integrate.api.nvidia.com/v1"
 api_key_env = "NVIDIA_API_KEY"
 max_tokens  = 8096
