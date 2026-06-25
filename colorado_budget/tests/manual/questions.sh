@@ -49,6 +49,14 @@ case "$Q" in
     echo "=== [9] Bill search + fiscal note — legislature MCP ==="
     $AGENT "What bills related to affordable housing were passed in Colorado in 2024, and what were their fiscal impacts on the General Fund?"
     ;;
+  10)
+    echo "=== [10] Governor request vs legislature — OSPB + legislature MCP ==="
+    $AGENT "For FY2025-26, how did the Governor's budget request for K-12 education compare to what the legislature actually appropriated?"
+    ;;
+  11)
+    echo "=== [11] Revenue forecast — OSPB MCP ==="
+    $AGENT "What did the most recent Colorado revenue forecast project for General Fund revenues, and how does that compare to the prior forecast?"
+    ;;
   *)
     echo "Colorado Budget Research Agent — manual test questions"
     echo ""
@@ -63,6 +71,8 @@ case "$Q" in
     echo "  7  Dataset discovery (quick sanity check)"
     echo "  8  SB23-213 land use reform fiscal impact"
     echo "  9  2024 affordable housing bills — legislature MCP smoke test"
+  echo " 10  Governor FY2025-26 K-12 request vs legislature — OSPB + legislature"
+  echo " 11  Revenue forecast — OSPB MCP"
     echo ""
     echo "Or run directly:"
     echo "  cd colorado_budget/src && python agent.py \"your question\""

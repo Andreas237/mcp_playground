@@ -93,6 +93,25 @@ EVAL_DATASET: list[EvalCase] = [
         ),
     ),
     EvalCase(
+        id="governor_vs_legislature",
+        question=(
+            "For FY2025-26, how did the Governor's budget request for K-12 education "
+            "compare to what the legislature actually appropriated?"
+        ),
+        expected_facts=[
+            "Governor",
+            "education",
+            "General Fund",
+        ],
+        fund_types_expected=["General Fund"],
+        notes=(
+            "Tests the OSPB server (find_governor_budget) vs legislature server "
+            "(find_appropriations_documents) comparison workflow. "
+            "The politically significant number is the gap: what the Governor asked for "
+            "vs what the JBC approved. Agent should cite both sources."
+        ),
+    ),
+    EvalCase(
         id="bill_fiscal_impact",
         question=(
             "What was the fiscal impact of SB23-213 (land use and zoning reform) on state "

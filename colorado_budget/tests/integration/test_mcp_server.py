@@ -84,3 +84,24 @@ def test_legislature_tools_have_descriptions(legislature_server):
     tools = asyncio.run(_list_tools(8003))
     for t in tools:
         assert t["description"]
+
+
+# ---------------------------------------------------------------------------
+# OSPB MCP server (port 8004)
+# ---------------------------------------------------------------------------
+
+def test_ospb_tools_list_returns_four_tools(ospb_server):
+    tools = asyncio.run(_list_tools(8004))
+    assert len(tools) == 4, f"Expected 4 OSPB tools, got {len(tools)}: {tools}"
+
+
+def test_ospb_tools_have_correct_names(ospb_server):
+    tools = asyncio.run(_list_tools(8004))
+    names = {t["name"] for t in tools}
+    assert names == {"search_ospb", "find_governor_budget", "find_revenue_forecast", "find_budget_amendments"}
+
+
+def test_ospb_tools_have_descriptions(ospb_server):
+    tools = asyncio.run(_list_tools(8004))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"

@@ -29,9 +29,10 @@ from utils import load_api_keys
 SRC_DIR = Path(__file__).parent
 
 MCP_SERVERS = [
-    {"name": "colorado-open-data", "script": SRC_DIR / "servers" / "colorado_open_data.py", "port": 8001},
-    {"name": "web-search",         "script": SRC_DIR / "servers" / "web_search.py",         "port": 8002},
-    {"name": "colorado-legislature", "script": SRC_DIR / "servers" / "legislature.py",       "port": 8003},
+    {"name": "colorado-open-data",   "script": SRC_DIR / "servers" / "colorado_open_data.py", "port": 8001},
+    {"name": "web-search",           "script": SRC_DIR / "servers" / "web_search.py",          "port": 8002},
+    {"name": "colorado-legislature",  "script": SRC_DIR / "servers" / "legislature.py",        "port": 8003},
+    {"name": "colorado-ospb",        "script": SRC_DIR / "servers" / "ospb.py",                "port": 8004},
 ]
 
 SYSTEM_PROMPT = """You are a Colorado state budget research assistant. Your purpose is to help \
@@ -44,6 +45,7 @@ public money — and to verify or challenge political claims with primary source
 - `colorado-open-data` tools: list_datasets, get_dataset_metadata, query_dataset — Socrata SODA API
 - `web-search` tools: search_web, search_colorado_government — Exa neural search
 - `colorado-legislature` tools: search_bills, get_bill_details, get_fiscal_note, find_appropriations_documents — leg.colorado.gov bill search, fiscal notes, JBC PDFs
+- `colorado-ospb` tools: search_ospb, find_governor_budget, find_revenue_forecast, find_budget_amendments — ospb.colorado.gov Governor's budget requests, revenue forecasts
 
 **Inline tools:**
 - fetch_webpage(url) — fetch and strip HTML from any CO government page
@@ -70,9 +72,13 @@ public money — and to verify or challenge political claims with primary source
 ## Source priority
 1. data.colorado.gov (SODA API) — structured, queryable; best for CDOT and TOPS
 2. leg.colorado.gov — Long Bill, JBC Appropriations History, fiscal notes, bill search
-3. ospb.colorado.gov — Governor's budget requests, revenue forecasts
+3. ospb.colorado.gov — Governor's budget requests (the "ask"), revenue forecasts
 4. search_colorado_government — finds official CO government pages by topic
 5. search_web — press coverage, policy analysis, national context
+
+## Governor's request vs. legislature approved
+Use `find_governor_budget` (OSPB) and `find_appropriations_documents` (legislature) together.
+The gap between the two is often the politically significant number politicians cite.
 
 ## Fund types — always distinguish
 | Type | Meaning |
@@ -132,15 +138,16 @@ def run_agent(question: str) -> str:
                 logger.error(f"Failed to start {srv['name']} — proceeding without it")
 
         # MCPClient instances — Agent manages their lifecycle (do NOT use as context manager here)
-        open_data = MCPClient(lambda: streamablehttp_client("http://localhost:8001/mcp"))
+        open_data   = MCPClient(lambda: streamablehttp_client("http://localhost:8001/mcp"))
         web_search  = MCPClient(lambda: streamablehttp_client("http://localhost:8002/mcp"))
         legislature = MCPClient(lambda: streamablehttp_client("http://localhost:8003/mcp"))
+        ospb        = MCPClient(lambda: streamablehttp_client("http://localhost:8004/mcp"))
 
         model = AnthropicModel(model_id="claude-sonnet-4-6", max_tokens=8096)
 
         agent = Agent(
             model=model,
-            tools=[open_data, web_search, legislature, fetch_webpage, fetch_and_parse_pdf],
+            tools=[open_data, web_search, legislature, ospb, fetch_webpage, fetch_and_parse_pdf],
             system_prompt=SYSTEM_PROMPT,
         )
         logger.info(f"Question: {question}")
