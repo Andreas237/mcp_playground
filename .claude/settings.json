@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import strands_tools; print\\(dir\\(strands_tools\\)\\)\")",
+      "Bash(python -c \"from strands_tools import *; help\\(\\)\")",
+      "Bash(python agent.py \"What datasets are available on data.colorado.gov about Colorado state spending or budget?\")",
+      "Read(//home/ace/**)",
+      "Bash(printenv ANTHROPIC_API_KEY)",
+      "Bash(printenv)",
+      "Bash(python agent.py \"What changes have been made to budgeting for the deaf and blind in Colorado in the last 10 years?\")",
+      "Bash(python -c \"import exa_py\")",
+      "Bash(python -c \"import pdfplumber\")",
+      "Bash(python -c \"import mcp\")",
+      "Bash(python -c \"from strands.tools.mcp import MCPClient; print\\('MCPClient ok'\\)\")",
+      "Bash(python -c \"import mcp; print\\(mcp.__version__\\)\")",
+      "Bash(python -c \"from mcp.server.fastmcp import FastMCP; print\\('FastMCP ok'\\)\")",
+      "Bash(python -c \"from mcp.client.sse import sse_client; from mcp.client.streamable_http import streamablehttp_client; print\\('both ok'\\)\")",
+      "Bash(uv sync *)",
+      "Bash(python mcp/colorado_open_data.py)",
+      "Bash(kill %1)",
+      "Bash(python -c \"from mcp.server.fastmcp import FastMCP; help\\(FastMCP.run\\)\")",
+      "Bash(python -c \"import mcp; import pkgutil; [print\\(m.name\\) for m in pkgutil.iter_modules\\(mcp.__path__\\)]\")",
+      "Bash(python agent.py \"What changes have been made to funding for the Colorado School for the Deaf and the Blind in the last 10 years?\")",
+      "WebFetch(domain:sdk.vercel.ai)",
+      "WebFetch(domain:ai-sdk.dev)",
+      "Bash(python3 -c \"import inspect; from strands import tool; print\\(inspect.getsource\\(tool\\)\\)\")",
+      "Bash(python -m pytest tests/unit -v)",
+      "Bash(uv add *)",
+      "Bash(python -m pytest colorado_budget/tests/unit -v)",
+      "Bash(python -m pytest colorado_budget/tests/integration/test_open_data_live.py -v)",
+      "Bash(python -c \"from mcp.client.streamable_http import streamablehttp_client; from mcp import ClientSession; print\\('ok'\\)\")",
+      "Bash(python -m pytest colorado_budget/tests/integration/test_mcp_server.py -v)",
+      "Bash(python -m pytest colorado_budget/tests -v -m \"not slow\")"
+    ]
+  }
+}

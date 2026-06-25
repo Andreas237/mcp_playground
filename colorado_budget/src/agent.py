@@ -109,7 +109,7 @@ def _wait_for_server(port: int, name: str, timeout: int = 20) -> bool:
     return False
 
 
-def run_agent(question: str) -> None:
+def run_agent(question: str) -> str:
     load_api_keys()
 
     # Start MCP servers as subprocesses
@@ -142,7 +142,9 @@ def run_agent(question: str) -> None:
         )
         logger.info(f"Question: {question}")
         response = agent(question)
-        print(f"\n{'='*60}\nAnswer:\n{'='*60}\n{response}\n")
+        answer = str(response)
+        print(f"\n{'='*60}\nAnswer:\n{'='*60}\n{answer}\n")
+        return answer
 
     finally:
         for p in processes:
