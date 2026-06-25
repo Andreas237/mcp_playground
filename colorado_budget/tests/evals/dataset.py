@@ -93,6 +93,25 @@ EVAL_DATASET: list[EvalCase] = [
         ),
     ),
     EvalCase(
+        id="bill_fiscal_impact",
+        question=(
+            "What was the fiscal impact of SB23-213 (land use and zoning reform) on state "
+            "and local government budgets in Colorado?"
+        ),
+        expected_facts=[
+            "SB23-213",
+            "General Fund",
+            "zoning",
+        ],
+        fund_types_expected=["General Fund"],
+        notes=(
+            "SB23-213 (2023) was a major land use reform bill. Its fiscal note should show "
+            "impacts to DOLA (Dept of Local Affairs) and potentially DOLA Cash Funds. "
+            "The bill was partially signed; some provisions were removed. "
+            "Tests the legislature MCP server: search_bills → get_bill_details → get_fiscal_note."
+        ),
+    ),
+    EvalCase(
         id="housing_permitting",
         question=(
             "How have state permitting regulations and fees impacted the cost of building "

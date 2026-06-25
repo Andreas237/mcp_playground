@@ -42,8 +42,12 @@ case "$Q" in
     $AGENT "What datasets are available on data.colorado.gov about Colorado state budget spending or appropriations?"
     ;;
   8)
-    echo "=== [8] Specific bill impact ==="
+    echo "=== [8] SB23-213 fiscal impact — legislature MCP ==="
     $AGENT "What fiscal impact did SB23-213 (land use reform) have on state and local government budgets?"
+    ;;
+  9)
+    echo "=== [9] Bill search + fiscal note — legislature MCP ==="
+    $AGENT "What bills related to affordable housing were passed in Colorado in 2024, and what were their fiscal impacts on the General Fund?"
     ;;
   *)
     echo "Colorado Budget Research Agent — manual test questions"
@@ -58,6 +62,7 @@ case "$Q" in
     echo "  6  Medicaid GF vs federal funds breakdown"
     echo "  7  Dataset discovery (quick sanity check)"
     echo "  8  SB23-213 land use reform fiscal impact"
+    echo "  9  2024 affordable housing bills — legislature MCP smoke test"
     echo ""
     echo "Or run directly:"
     echo "  cd colorado_budget/src && python agent.py \"your question\""

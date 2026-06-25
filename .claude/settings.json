@@ -31,7 +31,17 @@
       "Bash(python -m pytest colorado_budget/tests/integration/test_open_data_live.py -v)",
       "Bash(python -c \"from mcp.client.streamable_http import streamablehttp_client; from mcp import ClientSession; print\\('ok'\\)\")",
       "Bash(python -m pytest colorado_budget/tests/integration/test_mcp_server.py -v)",
-      "Bash(python -m pytest colorado_budget/tests -v -m \"not slow\")"
+      "Bash(python -m pytest colorado_budget/tests -v -m \"not slow\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(uv *)",
+      "Bash(pytest *)",
+      "Bash(cd *)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)"
     ]
   }
 }

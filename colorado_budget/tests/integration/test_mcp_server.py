@@ -45,3 +45,42 @@ def test_tools_have_descriptions(open_data_server):
     tools = asyncio.run(_list_tools())
     for t in tools:
         assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# Legislature MCP server (port 8003)
+# ---------------------------------------------------------------------------
+
+def test_legislature_tools_list_returns_four_tools(legislature_server):
+    tools = asyncio.run(_list_tools(8003))
+    assert len(tools) == 4, f"Expected 4 tools, got {len(tools)}: {tools}"
+
+
+def test_legislature_tools_have_correct_names(legislature_server):
+    tools = asyncio.run(_list_tools(8003))
+    names = {t["name"] for t in tools}
+    assert names == {"search_bills", "get_bill_details", "get_fiscal_note", "find_appropriations_documents"}
+
+
+def test_legislature_tools_have_descriptions(legislature_server):
+    tools = asyncio.run(_list_tools(8003))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"
+
+
+def test_legislature_tools_count(legislature_server):
+    tools = asyncio.run(_list_tools(8003))
+    assert len(tools) == 4, f"Expected 4 legislature tools, got {len(tools)}"
+
+
+def test_legislature_tool_names(legislature_server):
+    tools = asyncio.run(_list_tools(8003))
+    names = {t["name"] for t in tools}
+    expected = {"search_bills", "get_bill_details", "get_fiscal_note", "find_appropriations_documents"}
+    assert names == expected, f"Tool names mismatch: {names}"
+
+
+def test_legislature_tools_have_descriptions(legislature_server):
+    tools = asyncio.run(_list_tools(8003))
+    for t in tools:
+        assert t["description"]

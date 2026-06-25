@@ -31,6 +31,7 @@ SRC_DIR = Path(__file__).parent
 MCP_SERVERS = [
     {"name": "colorado-open-data", "script": SRC_DIR / "servers" / "colorado_open_data.py", "port": 8001},
     {"name": "web-search",         "script": SRC_DIR / "servers" / "web_search.py",         "port": 8002},
+    {"name": "colorado-legislature", "script": SRC_DIR / "servers" / "legislature.py",       "port": 8003},
 ]
 
 SYSTEM_PROMPT = """You are a Colorado state budget research assistant. Your purpose is to help \
@@ -42,6 +43,7 @@ public money — and to verify or challenge political claims with primary source
 **MCP tools (structured data + web search):**
 - `colorado-open-data` tools: list_datasets, get_dataset_metadata, query_dataset — Socrata SODA API
 - `web-search` tools: search_web, search_colorado_government — Exa neural search
+- `colorado-legislature` tools: search_bills, get_bill_details, get_fiscal_note, find_appropriations_documents — leg.colorado.gov bill search, fiscal notes, JBC PDFs
 
 **Inline tools:**
 - fetch_webpage(url) — fetch and strip HTML from any CO government page
@@ -131,13 +133,14 @@ def run_agent(question: str) -> str:
 
         # MCPClient instances — Agent manages their lifecycle (do NOT use as context manager here)
         open_data = MCPClient(lambda: streamablehttp_client("http://localhost:8001/mcp"))
-        web_search = MCPClient(lambda: streamablehttp_client("http://localhost:8002/mcp"))
+        web_search  = MCPClient(lambda: streamablehttp_client("http://localhost:8002/mcp"))
+        legislature = MCPClient(lambda: streamablehttp_client("http://localhost:8003/mcp"))
 
         model = AnthropicModel(model_id="claude-sonnet-4-6", max_tokens=8096)
 
         agent = Agent(
             model=model,
-            tools=[open_data, web_search, fetch_webpage, fetch_and_parse_pdf],
+            tools=[open_data, web_search, legislature, fetch_webpage, fetch_and_parse_pdf],
             system_prompt=SYSTEM_PROMPT,
         )
         logger.info(f"Question: {question}")
