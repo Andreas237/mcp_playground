@@ -3,7 +3,12 @@ Colorado Budget Research Agent
 
 Usage:
     python agent.py "your question here"
+    python agent.py --profile devstral "your question"
+    python agent.py --profile nvidia "your question"
     python agent.py  # runs the default dataset-discovery question
+
+The model, API key, and system prompt come from config.toml (see model_config.py).
+Switch LLMs with --profile or by changing `active_profile` in config.toml.
 
 The agent starts the MCP servers as background subprocesses, connects to them,
 then runs the query and shuts everything down cleanly.
@@ -18,10 +23,10 @@ import httpx
 from loguru import logger
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
-from strands.models.anthropic import AnthropicModel
 from strands.tools.mcp import MCPClient
 
 sys.path.insert(0, str(Path(__file__).parent))
+from model_config import load_agent_config
 from tools.fetch_webpage import fetch_webpage
 from tools.pdf_parser import fetch_and_parse_pdf
 from utils import load_api_keys
@@ -34,71 +39,6 @@ MCP_SERVERS = [
     {"name": "colorado-legislature",  "script": SRC_DIR / "servers" / "legislature.py",        "port": 8003},
     {"name": "colorado-ospb",        "script": SRC_DIR / "servers" / "ospb.py",                "port": 8004},
 ]
-
-SYSTEM_PROMPT = """You are a Colorado state budget research assistant. Your purpose is to help \
-citizens, journalists, and policy researchers understand how Colorado state government spends \
-public money — and to verify or challenge political claims with primary sources.
-
-## Tools available
-
-**MCP tools (structured data + web search):**
-- `colorado-open-data` tools: list_datasets, get_dataset_metadata, query_dataset — Socrata SODA API
-- `web-search` tools: search_web, search_colorado_government — Exa neural search
-- `colorado-legislature` tools: search_bills, get_bill_details, get_fiscal_note, find_appropriations_documents — leg.colorado.gov bill search, fiscal notes, JBC PDFs
-- `colorado-ospb` tools: search_ospb, find_governor_budget, find_revenue_forecast, find_budget_amendments — ospb.colorado.gov Governor's budget requests, revenue forecasts
-
-**Inline tools:**
-- fetch_webpage(url) — fetch and strip HTML from any CO government page
-- fetch_and_parse_pdf(url, page_range, keyword_filter) — download and extract text/tables from PDFs
-
-## Research workflow
-
-**Before your first tool call**, state your plan:
-- What sources are most likely to have this data?
-- What is your first call, and what fallback if it returns nothing?
-
-**After each result**, note:
-- What did I learn? Does this answer the question, partially, or not at all?
-- What is the most useful next call?
-
-**When a tool fails or returns empty**, reflect before retrying:
-- Why did it fail? (wrong URL pattern, portal redirect, no matching records?)
-- What different approach avoids the same failure?
-- Do NOT retry the same URL or query more than once.
-
-**Stop when you have enough** to give a well-sourced answer. Abandoned dead ends are fine \
-— say so and move on.
-
-## Source priority
-1. data.colorado.gov (SODA API) — structured, queryable; best for CDOT and TOPS
-2. leg.colorado.gov — Long Bill, JBC Appropriations History, fiscal notes, bill search
-3. ospb.colorado.gov — Governor's budget requests (the "ask"), revenue forecasts
-4. search_colorado_government — finds official CO government pages by topic
-5. search_web — press coverage, policy analysis, national context
-
-## Governor's request vs. legislature approved
-Use `find_governor_budget` (OSPB) and `find_appropriations_documents` (legislature) together.
-The gap between the two is often the politically significant number politicians cite.
-
-## Fund types — always distinguish
-| Type | Meaning |
-|------|---------|
-| General Fund | State income + sales tax; discretionary; politically significant |
-| Cash Funds | Earmarked fees; often cannot be redirected |
-| Federal Funds | Federal grants; can disappear with federal policy changes |
-| Reappropriated | Transfers between agencies; often misunderstood in political claims |
-
-## Output format — Wikipedia-style citations
-
-Write naturally. When you state a fact from a source, add an inline citation number like \
-this[1]. At the end of your response, include a **Sources** section:
-
-[1] Dataset name or document title — URL or dataset ID
-[2] ...
-
-Number citations sequentially. If the same source is cited multiple times, reuse its number. \
-Do not add a citation for general background knowledge — only for specific facts from tool results.
-"""
 
 
 def _wait_for_server(port: int, name: str, timeout: int = 20) -> bool:
@@ -117,8 +57,9 @@ def _wait_for_server(port: int, name: str, timeout: int = 20) -> bool:
     return False
 
 
-def run_agent(question: str) -> str:
+def run_agent(question: str, profile: str | None = None) -> str:
     load_api_keys()
+    config = load_agent_config(profile)
 
     # Start MCP servers as subprocesses
     processes = []
@@ -143,13 +84,12 @@ def run_agent(question: str) -> str:
         legislature = MCPClient(lambda: streamablehttp_client("http://localhost:8003/mcp"))
         ospb        = MCPClient(lambda: streamablehttp_client("http://localhost:8004/mcp"))
 
-        model = AnthropicModel(model_id="claude-sonnet-4-6", max_tokens=8096)
-
         agent = Agent(
-            model=model,
+            model=config.model,
             tools=[open_data, web_search, legislature, ospb, fetch_webpage, fetch_and_parse_pdf],
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=config.system_prompt,
         )
+        logger.info(f"Profile: {config.profile_name} ({config.provider}/{config.model_id})")
         logger.info(f"Question: {question}")
         response = agent(question)
         answer = str(response)
@@ -170,5 +110,11 @@ if __name__ == "__main__":
         default="What datasets are available on data.colorado.gov about Colorado state budget spending or appropriations?",
         help="Policy question to research",
     )
+    parser.add_argument(
+        "--profile",
+        default=None,
+        help="Model profile from config.toml (e.g. claude, devstral, nvidia). "
+             "Defaults to active_profile in config.toml.",
+    )
     args = parser.parse_args()
-    run_agent(args.question)
+    run_agent(args.question, profile=args.profile)

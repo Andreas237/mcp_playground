@@ -2,27 +2,91 @@
 
 A conversational research tool for investigating Colorado state government spending. Ask broad policy questions in plain English; the agent finds, queries, and synthesizes data from Colorado government sources.
 
-Built as a [Strands](https://strandsagents.com) agent backed by Claude Sonnet.
+Built as a [Strands](https://strandsagents.com) agent. The LLM is **configurable** — Claude, Devstral (Mistral), or any OpenAI-compatible endpoint (e.g. NVIDIA NIM) — via [`config.toml`](config.toml). See [Choosing a model](#choosing-a-model).
 
 ---
 
 ## Quick Start
 
+> **Use the project venv.** This repo is managed by [uv](https://docs.astral.sh/uv/);
+> the dependencies (`strands`, `openai`, …) live in `.venv`, not your system Python.
+> Either activate it (`source .venv/bin/activate`) or call the interpreter directly
+> (`.venv/bin/python …`). Running plain `python agent.py` with the venv inactive
+> fails with `ModuleNotFoundError: No module named 'strands'`.
+
 ```bash
 cd colorado_budget/src
+source ../../.venv/bin/activate          # or prefix commands with ../../.venv/bin/python
 
-# Default question (lists available datasets)
+# Default question (lists available datasets), default model (claude)
 python agent.py
 
 # Ask a specific question
 python agent.py "What changes have been made to funding for the Colorado School for the Deaf and the Blind in the last 10 years?"
 
-python agent.py "How has Colorado's Medicaid spending changed since 2018?"
-
-python agent.py "What bills passed in 2023 that affected housing affordability funding?"
+# Try a different model
+python agent.py --profile devstral "How has Colorado's Medicaid spending changed since 2018?"
+python agent.py --profile nvidia   "What bills passed in 2023 that affected housing affordability funding?"
 ```
 
-**API key:** The agent uses `ANTHROPIC_API_KEY`. If that's not set, it automatically falls back to `OPENWEBUI_ANTHROPIC_API_KEY`. No `.env` file is required if either variable is in your shell environment.
+---
+
+## Setting up `.env`
+
+The agent loads API keys from `colorado_budget/.env` (falling back to the repo-root `.env`, then your shell environment). **`.env` files are gitignored — never commit keys.**
+
+Create `colorado_budget/.env` with the keys for the providers you intend to use:
+
+```bash
+# --- Required: web search (used by every run) ---
+EXA_API_KEY=your-exa-key
+
+# --- LLM provider keys (only the one(s) you use) ---
+# Claude (default profile). Either name works; ANTHROPIC_API_KEY takes precedence.
+ANTHROPIC_API_KEY=sk-ant-...
+# OPENWEBUI_ANTHROPIC_API_KEY=sk-ant-...   # auto-mapped to ANTHROPIC_API_KEY if the above is unset
+
+# Devstral (devstral profile)
+MISTRAL_API_KEY=...
+
+# NVIDIA NIM (nvidia profile) — free keys at https://build.nvidia.com
+NVIDIA_API_KEY=nvapi-...
+```
+
+Notes:
+- Each profile in `config.toml` names the env var it needs via `api_key_env`. If that variable is unset, the agent fails fast with a clear message naming the missing key.
+- `EXA_API_KEY` is always required — the `web-search` MCP server uses it regardless of which LLM you pick.
+- You only need the key(s) for the profile(s) you actually run.
+
+---
+
+## Choosing a model
+
+Models are defined as **profiles** in [`config.toml`](config.toml). Each profile sets a provider, model ID, the env var holding its API key, and token limits. The shared `system_prompt` lives at the top of the same file (a profile may override it).
+
+| Profile | Provider | Model | Key env | Status |
+|---------|----------|-------|---------|--------|
+| `claude` (default) | Anthropic | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | ✅ Verified end-to-end (full toolset) |
+| `devstral` | OpenAI-compatible (`api.mistral.ai/v1`) | `devstral-small-latest` | `MISTRAL_API_KEY` | ✅ Verified end-to-end (full toolset) |
+| `nvidia` | OpenAI-compatible (NIM) | `nvidia/llama-3.3-nemotron-super-49b-v1` | `NVIDIA_API_KEY` | ⚠️ Tool-calling works with few tools; returns empty on the full toolset (see caveat below) |
+
+> **Why Devstral uses the `openai` provider, not `mistral`:** this project pins `mistralai>=2.2.0` (for langchain), which is incompatible with Strands' native `MistralModel` (it needs `mistralai<2.0.0`). Mistral's API is OpenAI-compatible, so the `devstral` profile points the `openai` provider at `https://api.mistral.ai/v1` — no `mistralai` SDK required, and tool calling works.
+
+Select a model three ways:
+- **Per run:** `python agent.py --profile devstral "question"`
+- **Change the default:** set `active_profile = "devstral"` in `config.toml`
+- **Add your own:** copy a `[profiles.x]` block, point `base_url`/`model_id`/`api_key_env` at any OpenAI-compatible endpoint (OpenRouter, local vLLM/Ollama, …)
+
+```toml
+[profiles.my-model]
+provider    = "openai"
+model_id    = "meta/llama-3.1-70b-instruct"
+base_url    = "https://integrate.api.nvidia.com/v1"
+api_key_env = "NVIDIA_API_KEY"
+max_tokens  = 8096
+```
+
+> **Tool-calling matters.** This is an *agent* — it depends on the model issuing tool calls. Claude handles the full toolset well (verified on the Q8–Q10 smoke tests). Some OpenAI-compatible models return an empty response when given many tools at once: `nvidia/llama-3.3-nemotron-super-49b-v1` calls a *single* tool correctly but returns a blank completion when handed all ~16 tools the agent exposes. If a model answers without ever calling a tool (or returns nothing), suspect weak/partial tool-call support. See [tests/README.md](tests/README.md#trying-different-models) for the steps to verify a new model before trusting it.
 
 ---
 
@@ -87,9 +151,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the roadmap to address both gaps.
 ```
 colorado_budget/
 ├── README.md              ← you are here
-├── ARCHITECTURE.md        ← design doc and roadmap (iterate before building)
+├── ARCHITECTURE.md        ← design doc and roadmap
+├── config.toml            ← model profiles + system prompt (edit to switch LLMs)
+├── .env                   ← API keys (gitignored — create this yourself)
 └── src/
-    ├── agent.py                    ← entry point; Strands agent wiring
-    ├── colorado_open_data_tools.py ← Strands tools: SODA API + fetch_webpage
-    └── utils.py                    ← API key loading with env var fallback
+    ├── agent.py           ← entry point; Strands agent wiring, --profile flag
+    ├── model_config.py    ← reads config.toml, builds the selected model provider
+    ├── utils.py           ← API key loading with env var fallback
+    ├── servers/           ← MCP servers (open-data, web-search, legislature, ospb)
+    └── tools/             ← inline tools: fetch_webpage, fetch_and_parse_pdf
 ```
