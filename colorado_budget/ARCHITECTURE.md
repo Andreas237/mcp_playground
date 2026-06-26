@@ -21,11 +21,11 @@ A research system that lets anyone ask broad, natural-language questions about C
 
 ## Current State (implemented)
 
-A single Strands agent ([`agent.py`](src/agent.py)) orchestrates **7 MCP servers** plus 2 inline tools. On each run the agent spawns every server as a subprocess (streamable-HTTP, one per port), connects with an `MCPClient`, runs the query, and shuts the servers down. The LLM is **configurable** per run via [`config.toml`](config.toml) (see [Decision 2](#decision-2--model--configurable-via-configtoml-)).
+A single Strands agent ([`agent.py`](src/agent.py)) orchestrates **11 MCP servers** plus 2 inline tools. On each run the agent spawns every server as a subprocess (streamable-HTTP, one per port), connects with an `MCPClient`, runs the query, and shuts the servers down. The LLM is **configurable** per run via [`config.toml`](config.toml) (see [Decision 2](#decision-2--model--configurable-via-configtoml-)).
 
-**What works now:** dataset discovery and trends (open-data); bill search, fiscal notes, and JBC appropriations (legislature); Governor's budget request and forecasts (OSPB); Legislative Council revenue forecast, TABOR, and tax expenditures (revenue); federal funding by agency/recipient (federal-funds); K-12 Total Program and the HB24-1448 formula (school-finance); and Exa web search. Exact line-item PDFs are reachable via `fetch_and_parse_pdf`.
+**What works now:** dataset discovery and trends (open-data); bill search, fiscal notes, and JBC appropriations (legislature); Governor's budget request and forecasts (OSPB); Legislative Council revenue forecast, TABOR, and tax expenditures (revenue); federal funding by agency/recipient (federal-funds); K-12 Total Program and the HB24-1448 formula (school-finance); Medicaid budget, caseload, and appropriations (HCPF); and four department-level servers — Parks & Wildlife, Agriculture, and CDOT — that surface budget requests, JBC figure-setting, and program documents by fund type. Plus Exa web search. Exact line-item PDFs are reachable via `fetch_and_parse_pdf`.
 
-**Still sparse:** current-year *actual* expenditures (TOPS checkbook is a non-tabular 403 dead end; we rely on appropriations + forecasts instead), and per-district data delivered as Excel (`fetch_and_parse_pdf` is PDF-only).
+**Still sparse:** current-year *actual* expenditures (TOPS checkbook is a non-tabular 403 dead end; we rely on appropriations + forecasts instead — though CDOT actuals are queryable via the open-data CDOT datasets), and per-district / per-month data delivered as Excel (`fetch_and_parse_pdf` is PDF-only).
 
 ---
 
@@ -42,15 +42,24 @@ All servers live in [`src/servers/`](src/servers/), run on `streamable-http` tra
 | 8005 | `colorado-revenue` | `revenue.py` | `search_revenue`, `find_legislative_forecast`, `find_tax_expenditure_report`, `find_tabor_resources` | Legislative Council / OSA / DOR + Exa |
 | 8006 | `colorado-federal-funds` | `federal_funds.py` | `colorado_federal_summary`, `federal_funding_by_agency`, `top_federal_recipients`, `search_federal_awards` | USAspending.gov v2 API — no key |
 | 8007 | `colorado-school-finance` | `school_finance.py` | `search_school_finance`, `find_school_finance_act`, `find_per_pupil_funding`, `find_finance_formula_resources` | CDE (ed.cde.state.co.us) + leg + Exa |
+| 8008 | `colorado-hcpf` | `hcpf.py` | `search_hcpf`, `find_hcpf_budget_request`, `find_caseload_reports`, `find_hcpf_appropriations` | hcpf.colorado.gov (browser UA) + leg + Exa |
+| 8009 | `colorado-parks-wildlife` | `cpw.py` | `search_cpw`, `find_cpw_financial_reports`, `get_sources_and_uses`, `find_cpw_appropriations` | cpw.state.co.us + leg + Exa |
+| 8010 | `colorado-agriculture` | `agriculture.py` | `search_agriculture`, `find_agriculture_budget`, `find_agriculture_appropriations`, `find_agriculture_programs` | ag.colorado.gov (browser UA) + leg + Exa |
+| 8011 | `colorado-cdot` | `cdot.py` | `search_cdot`, `find_cdot_budget`, `find_cdot_appropriations`, `find_stip` | codot.gov + leg + Exa (actuals: open-data) |
 
 **Inline tools** (in [`src/tools/`](src/tools/), not MCP — passed directly to the agent): `fetch_webpage(url)` and `fetch_and_parse_pdf(url, page_range, keyword_filter)`.
 
+The four department servers (HCPF, CPW, Agriculture, CDOT) each expose the same shape: a `search_*`, a budget/request finder, a JBC figure-setting finder, and a domain-specific finder (caseload, sources-and-uses, programs, STIP). They are deliberately fund-type contrasts — HCPF (~50/50 GF/Federal), CPW and Agriculture (cash/fee-funded), CDOT (HUTF cash + Federal) — so the agent can show how "state funding" means very different things by department.
+
 ### Implementation patterns
 
-- **Scraper servers** (legislature, ospb, revenue, school-finance): page-scrape known landing pages for document links → **Exa fallback** (host-agnostic, survives site reorganizations) → **HEAD-check** candidate URLs so only reachable docs are returned. Helpers `_fetch_page`, `_extract_*_links`/`_doc_links`, `_head_check`, `_get_exa` are duplicated per server by design (each owns its source). Discovery returns document URLs (and, for school-finance, HTML `pages`) which the agent then reads with `fetch_and_parse_pdf` / `fetch_webpage`.
+- **Scraper servers** (legislature, ospb, revenue, school-finance, hcpf, cpw, agriculture, cdot): page-scrape known landing pages for document links → **Exa fallback** (host-agnostic, survives site reorganizations) → **HEAD-check** candidate URLs so only reachable docs are returned. Helpers `_fetch_page`, `_extract_*_links`/`_doc_links`, `_head_check`, `_get_exa`, `_collect` are duplicated per server by design (each owns its source). The department servers return both `documents` (HEAD-verified PDFs/Excel) and `pages` (HTML the agent reads with `fetch_webpage`), since CO department sites keep budget info on landing pages, not loose files.
 - **API servers** (open-data, federal-funds): hit a clean REST/JSON API directly and return structured results — no scraping, most reliable.
-- **Fiscal-year naming** is inconsistent across CO sources; servers carry helpers (`_fy_variants`, `_fy_time_period`, month/quarter maps) to match the many conventions ("2026-27", "FY2027", "fy26-27", federal Oct–Sep, etc.).
+- **JBC figure-setting URLs** are constructed per department code and HEAD-checked, with an Exa fallback: `edufig` (education), `hcpfig` (HCPF), `natfig` (Natural Resources / CPW), `agrfig` (Agriculture), `trafig`/`trahrg` (Transportation / CDOT). Year forms are inconsistent — most use `fy2025-26`, but transportation mixes `fy26-27` (short) and `fy2025-26` (full), so `cdot.py` tries both.
+- **Browser User-Agent:** `hcpf.colorado.gov` and `ag.colorado.gov` return **403** to non-browser User-Agents, so `hcpf.py` and `agriculture.py` send a browser UA. This is the most likely future breakage for those two servers (verified via live smoke tests, not unit tests).
+- **Fiscal-year naming** helpers (`_fy_variants`, `_fy_time_period`, `_fy_full`/`_fy_short`, `_*fig_urls`, month/quarter maps) match the many conventions ("2026-27", "FY2027", "fy26-27", federal Oct–Sep, "2026-2027" slugs, etc.).
 - **All servers require `EXA_API_KEY`** except open-data and federal-funds. Keys load from `colorado_budget/.env` via `utils.load_api_keys` and are **never** committed (see security note).
+- **Testing:** every server has unit tests (mocked I/O), a subprocess integration test (`tests/integration/test_mcp_server.py`), and — for the department servers — a **trajectory test plan** in [`tests/evals/trajectory/`](tests/evals/trajectory/) that asserts on the *sequence of tools the agent calls* via the Strands Evals SDK (incl. routing-guard negative cases). See that directory's README.
 
 > **Security:** API keys live only in `colorado_budget/.env` (gitignored). Never put keys in `config.toml`, `ARCHITECTURE.md`, or any tracked file. Each model profile in `config.toml` references its key by env-var name (`api_key_env`), not value.
 
@@ -88,7 +97,7 @@ The LLM is no longer hard-coded. [`config.toml`](config.toml) defines named **pr
 
 **Primary remains `claude-sonnet-4-6`** — reasoning quality matters most for synthesizing sparse, inconsistent government data. Add any OpenAI-compatible endpoint (OpenRouter, local vLLM/Ollama) by copying a profile block.
 
-**Tool-calling is version-sensitive:** the agent exposes 27 tools at once (25 across 7 servers + 2 inline). `nemotron-super-49b-**v1**` returned an empty completion on the full toolset; **v1.5** fixed it. Always verify a new model/version before trusting it. Devstral uses the `openai` provider (not Strands' `MistralModel`) because the project pins `mistralai>=2.2.0`, incompatible with that provider.
+**Tool-calling is version-sensitive:** the agent exposes 43 tools at once (41 across 11 servers + 2 inline). `nemotron-super-49b-**v1**` returned an empty completion on the full toolset; **v1.5** fixed it. Always verify a new model/version before trusting it. Devstral uses the `openai` provider (not Strands' `MistralModel`) because the project pins `mistralai>=2.2.0`, incompatible with that provider.
 
 ---
 
@@ -113,7 +122,7 @@ This gives the auditability benefit of a planning step at zero extra cost — on
 
 ## Proposed MCP Servers
 
-> **Historical / design rationale.** All of these are now implemented (and the set has grown to 7 — see [Implemented MCP Servers & Port Map](#implemented-mcp-servers--port-map) for current ports and tool names). Tool names below reflect the original proposal and may differ from what shipped; the port map is authoritative. Kept here for the design reasoning, especially the **Fund Types** table, which still drives the agent's analysis.
+> **Historical / design rationale.** All of these are now implemented (and the set has grown to 11 — see [Implemented MCP Servers & Port Map](#implemented-mcp-servers--port-map) for current ports and tool names). Tool names below reflect the original proposal and may differ from what shipped; the port map is authoritative. Kept here for the design reasoning, especially the **Fund Types** table, which still drives the agent's analysis.
 
 ### 1. `colorado-open-data` (Socrata SODA API)
 **Already implemented as Strands tools — promote to MCP server.**
@@ -313,18 +322,28 @@ colorado_budget/
     ├── model_config.py       ← reads config.toml profile → builds Strands model
     ├── utils.py              ← API key loading (.env → env vars)
     │
-    ├── servers/              ← MCP servers (one file per data source; ports 8001–8007)
+    ├── servers/              ← MCP servers (one file per data source; ports 8001–8011)
     │   ├── colorado_open_data.py   ← 8001  Socrata SODA
     │   ├── web_search.py           ← 8002  Exa
     │   ├── legislature.py          ← 8003  leg.colorado.gov bills, fiscal notes, JBC
     │   ├── ospb.py                 ← 8004  Governor's budget, forecasts
     │   ├── revenue.py              ← 8005  LCS forecast, TABOR, tax expenditures
     │   ├── federal_funds.py        ← 8006  USAspending.gov
-    │   └── school_finance.py       ← 8007  CDE K-12 funding, HB24-1448
+    │   ├── school_finance.py       ← 8007  CDE K-12 funding, HB24-1448
+    │   ├── hcpf.py                 ← 8008  HCPF / Medicaid (budget, caseload, appropriations)
+    │   ├── cpw.py                  ← 8009  Parks & Wildlife (financial reports, appropriations)
+    │   ├── agriculture.py          ← 8010  Dept of Agriculture (budget, programs)
+    │   └── cdot.py                 ← 8011  CDOT (budget allocation plan, STIP, appropriations)
     │
     └── tools/                ← inline Strands tools (not MCP)
         ├── fetch_webpage.py  ← HTML fetcher/stripper
         └── pdf_parser.py     ← pdfplumber wrapper (fetch_and_parse_pdf)
 ```
 
-Tests live in `tests/` (`unit/`, `integration/`, `evals/`, `manual/`); each server has unit tests (mocked network) and an integration test that boots the subprocess and checks its tool list. See [tests/README.md](tests/README.md).
+Tests live in `tests/`:
+- `unit/` — per-server, mocked network (one `test_<server>_tools.py` each)
+- `integration/test_mcp_server.py` — boots each server subprocess, checks its tool list
+- `evals/trajectory/` — per-department-server trajectory test plans (Strands Evals SDK): assert the agent calls the right tools in the right order, plus routing-guard negatives
+- `manual/` — `questions.sh` smoke questions
+
+See [tests/README.md](tests/README.md) and [tests/evals/trajectory/README.md](tests/evals/trajectory/README.md). Full suite: 195 passing.
