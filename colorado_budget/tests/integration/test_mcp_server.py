@@ -261,3 +261,29 @@ def test_agriculture_tools_have_descriptions(agriculture_server):
     tools = asyncio.run(_list_tools(8010))
     for t in tools:
         assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# CDOT MCP server (port 8011)
+# ---------------------------------------------------------------------------
+
+def test_cdot_tools_list_returns_four_tools(cdot_server):
+    tools = asyncio.run(_list_tools(8011))
+    assert len(tools) == 4, f"Expected 4 CDOT tools, got {len(tools)}: {tools}"
+
+
+def test_cdot_tools_have_correct_names(cdot_server):
+    tools = asyncio.run(_list_tools(8011))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "search_cdot",
+        "find_cdot_budget",
+        "find_cdot_appropriations",
+        "find_stip",
+    }
+
+
+def test_cdot_tools_have_descriptions(cdot_server):
+    tools = asyncio.run(_list_tools(8011))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"
