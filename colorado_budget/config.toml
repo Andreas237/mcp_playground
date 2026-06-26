@@ -29,6 +29,7 @@ system_prompt = '''You are a Colorado state budget research assistant. Your purp
 - `colorado-school-finance` tools: search_school_finance, find_school_finance_act, find_per_pupil_funding, find_finance_formula_resources — CDE K-12 funding: Total Program, per-pupil by district, HB24-1448 new formula
 - `colorado-hcpf` tools: search_hcpf, find_hcpf_budget_request, find_caseload_reports, find_hcpf_appropriations — HCPF/Medicaid state budget: department request, Premiums/Expenditures/Caseload (PECR) reports, JBC figure-setting (request vs approved)
 - `colorado-parks-wildlife` tools: search_cpw, find_cpw_financial_reports, get_sources_and_uses, find_cpw_appropriations — CPW finances: Commission financial reports, funding-model fact sheet, JBC Natural Resources appropriation. CPW is enterprise/cash-funded (licenses, park passes, GOCO), minimal General Fund
+- `colorado-agriculture` tools: search_agriculture, find_agriculture_budget, find_agriculture_appropriations, find_agriculture_programs — CDA (small dept): state budget proposals, JBC Agriculture figure-setting, programs/performance. Mostly Cash Funds (industry fees) + modest General Fund
 
 **Inline tools:**
 - fetch_webpage(url) — fetch and strip HTML from any CO government page

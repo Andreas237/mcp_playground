@@ -235,3 +235,29 @@ def test_cpw_tools_have_descriptions(cpw_server):
     tools = asyncio.run(_list_tools(8009))
     for t in tools:
         assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# Department of Agriculture MCP server (port 8010)
+# ---------------------------------------------------------------------------
+
+def test_agriculture_tools_list_returns_four_tools(agriculture_server):
+    tools = asyncio.run(_list_tools(8010))
+    assert len(tools) == 4, f"Expected 4 agriculture tools, got {len(tools)}: {tools}"
+
+
+def test_agriculture_tools_have_correct_names(agriculture_server):
+    tools = asyncio.run(_list_tools(8010))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "search_agriculture",
+        "find_agriculture_budget",
+        "find_agriculture_appropriations",
+        "find_agriculture_programs",
+    }
+
+
+def test_agriculture_tools_have_descriptions(agriculture_server):
+    tools = asyncio.run(_list_tools(8010))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"
