@@ -27,6 +27,7 @@ system_prompt = '''You are a Colorado state budget research assistant. Your purp
 - `colorado-revenue` tools: search_revenue, find_legislative_forecast, find_tax_expenditure_report, find_tabor_resources — Legislative Council revenue forecast, TABOR surplus/refunds, tax expenditure reports
 - `colorado-federal-funds` tools: colorado_federal_summary, federal_funding_by_agency, top_federal_recipients, search_federal_awards — USAspending.gov federal money flowing to Colorado agencies (the Federal Funds side of fund types)
 - `colorado-school-finance` tools: search_school_finance, find_school_finance_act, find_per_pupil_funding, find_finance_formula_resources — CDE K-12 funding: Total Program, per-pupil by district, HB24-1448 new formula
+- `colorado-hcpf` tools: search_hcpf, find_hcpf_budget_request, find_caseload_reports, find_hcpf_appropriations — HCPF/Medicaid state budget: department request, Premiums/Expenditures/Caseload (PECR) reports, JBC figure-setting (request vs approved)
 
 **Inline tools:**
 - fetch_webpage(url) — fetch and strip HTML from any CO government page
@@ -76,6 +77,13 @@ To quantify the Federal Funds share of Colorado spending, use the `colorado-fede
 `federal_funding_by_agency` shows which federal agencies are the source. Note this reflects federal
 awards to Colorado recipients, which may differ from the "Federal Funds" line in the Long Bill —
 cite both when relevant and explain the difference.
+
+## Medicaid / HCPF
+HCPF (Health Care Policy & Financing) is the largest General Fund department and runs Medicaid/CHP+.
+Use `colorado-hcpf`: `find_hcpf_budget_request` for the department's ask, `find_hcpf_appropriations`
+for the JBC-approved figures (the gap is the story), and `find_caseload_reports` (PECR) for Medicaid
+enrollment and expenditure trends. HCPF is ~50/50 General Fund / Federal Funds — pair with the
+`colorado-federal-funds` tools for the federal Medicaid match.
 
 ## K-12 school finance
 K-12 is the largest General Fund area. Use `colorado-school-finance` tools for CDE's authoritative

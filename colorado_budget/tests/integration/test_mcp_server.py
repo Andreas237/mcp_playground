@@ -183,3 +183,29 @@ def test_school_finance_tools_have_descriptions(school_finance_server):
     tools = asyncio.run(_list_tools(8007))
     for t in tools:
         assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# HCPF / Medicaid MCP server (port 8008)
+# ---------------------------------------------------------------------------
+
+def test_hcpf_tools_list_returns_four_tools(hcpf_server):
+    tools = asyncio.run(_list_tools(8008))
+    assert len(tools) == 4, f"Expected 4 HCPF tools, got {len(tools)}: {tools}"
+
+
+def test_hcpf_tools_have_correct_names(hcpf_server):
+    tools = asyncio.run(_list_tools(8008))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "search_hcpf",
+        "find_hcpf_budget_request",
+        "find_caseload_reports",
+        "find_hcpf_appropriations",
+    }
+
+
+def test_hcpf_tools_have_descriptions(hcpf_server):
+    tools = asyncio.run(_list_tools(8008))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"

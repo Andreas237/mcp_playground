@@ -125,6 +125,21 @@ def school_finance_server(api_keys):
     proc.wait()
 
 
+@pytest.fixture(scope="session")
+def hcpf_server(api_keys):
+    """Start the colorado-hcpf MCP server and yield; stop on teardown."""
+    script = SRC / "servers" / "hcpf.py"
+    proc = subprocess.Popen(
+        [sys.executable, str(script)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _wait_for_port(8008, "colorado-hcpf", timeout=20)
+    yield proc
+    proc.terminate()
+    proc.wait()
+
+
 def _wait_for_port(port: int, name: str, timeout: int = 20) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:

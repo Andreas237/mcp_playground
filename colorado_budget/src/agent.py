@@ -41,6 +41,7 @@ MCP_SERVERS = [
     {"name": "colorado-revenue",     "script": SRC_DIR / "servers" / "revenue.py",             "port": 8005},
     {"name": "colorado-federal-funds", "script": SRC_DIR / "servers" / "federal_funds.py",      "port": 8006},
     {"name": "colorado-school-finance", "script": SRC_DIR / "servers" / "school_finance.py",    "port": 8007},
+    {"name": "colorado-hcpf",        "script": SRC_DIR / "servers" / "hcpf.py",                "port": 8008},
 ]
 
 
@@ -89,10 +90,11 @@ def run_agent(question: str, profile: str | None = None) -> str:
         revenue     = MCPClient(lambda: streamablehttp_client("http://localhost:8005/mcp"))
         federal     = MCPClient(lambda: streamablehttp_client("http://localhost:8006/mcp"))
         school      = MCPClient(lambda: streamablehttp_client("http://localhost:8007/mcp"))
+        hcpf        = MCPClient(lambda: streamablehttp_client("http://localhost:8008/mcp"))
 
         agent = Agent(
             model=config.model,
-            tools=[open_data, web_search, legislature, ospb, revenue, federal, school, fetch_webpage, fetch_and_parse_pdf],
+            tools=[open_data, web_search, legislature, ospb, revenue, federal, school, hcpf, fetch_webpage, fetch_and_parse_pdf],
             system_prompt=config.system_prompt,
         )
         logger.info(f"Profile: {config.profile_name} ({config.provider}/{config.model_id})")
