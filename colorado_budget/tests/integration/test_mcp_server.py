@@ -209,3 +209,29 @@ def test_hcpf_tools_have_descriptions(hcpf_server):
     tools = asyncio.run(_list_tools(8008))
     for t in tools:
         assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# Parks & Wildlife MCP server (port 8009)
+# ---------------------------------------------------------------------------
+
+def test_cpw_tools_list_returns_four_tools(cpw_server):
+    tools = asyncio.run(_list_tools(8009))
+    assert len(tools) == 4, f"Expected 4 CPW tools, got {len(tools)}: {tools}"
+
+
+def test_cpw_tools_have_correct_names(cpw_server):
+    tools = asyncio.run(_list_tools(8009))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "search_cpw",
+        "find_cpw_financial_reports",
+        "get_sources_and_uses",
+        "find_cpw_appropriations",
+    }
+
+
+def test_cpw_tools_have_descriptions(cpw_server):
+    tools = asyncio.run(_list_tools(8009))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"
