@@ -112,7 +112,7 @@ import os; from utils import load_api_keys; load_api_keys()
 import openai
 c = openai.OpenAI(api_key=os.environ['NVIDIA_API_KEY'], base_url='https://integrate.api.nvidia.com/v1')
 tools=[{'type':'function','function':{'name':'get_weather','description':'Get weather','parameters':{'type':'object','properties':{'city':{'type':'string'}},'required':['city']}}}]
-r = c.chat.completions.create(model='nvidia/llama-3.3-nemotron-super-49b-v1',
+r = c.chat.completions.create(model='nvidia/llama-3.3-nemotron-super-49b-v1.5',
     messages=[{'role':'user','content':'Weather in Denver? Use the tool.'}], tools=tools, max_tokens=200)
 print('finish_reason:', r.choices[0].finish_reason)        # want: tool_calls
 print('tool_calls:', r.choices[0].message.tool_calls)
@@ -130,7 +130,7 @@ Watch the `Tool #N:` lines in the output — they confirm the model is actually
 calling tools (agent-mode) rather than answering from its own weights (LLM-mode).
 
 > **Known caveat — many tools at once (version-sensitive).** The full agent
-> exposes ~16 tools (4 MCP servers + 2 inline). Claude, Devstral, and
+> exposes ~19 tools (5 MCP servers + 2 inline). Claude, Devstral, and
 > `nvidia/llama-3.3-nemotron-super-49b-v1.5` handle this fine. The earlier
 > `…-super-49b-v1` (no `.5`) handled a *single* tool but returned an **empty
 > completion** on the full toolset — no error, no tool call, just a blank answer.

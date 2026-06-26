@@ -80,6 +80,51 @@ def ospb_server(api_keys):
     proc.wait()
 
 
+@pytest.fixture(scope="session")
+def revenue_server(api_keys):
+    """Start the colorado-revenue MCP server and yield; stop on teardown."""
+    script = SRC / "servers" / "revenue.py"
+    proc = subprocess.Popen(
+        [sys.executable, str(script)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _wait_for_port(8005, "colorado-revenue", timeout=20)
+    yield proc
+    proc.terminate()
+    proc.wait()
+
+
+@pytest.fixture(scope="session")
+def federal_funds_server(api_keys):
+    """Start the colorado-federal-funds MCP server and yield; stop on teardown."""
+    script = SRC / "servers" / "federal_funds.py"
+    proc = subprocess.Popen(
+        [sys.executable, str(script)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _wait_for_port(8006, "colorado-federal-funds", timeout=20)
+    yield proc
+    proc.terminate()
+    proc.wait()
+
+
+@pytest.fixture(scope="session")
+def school_finance_server(api_keys):
+    """Start the colorado-school-finance MCP server and yield; stop on teardown."""
+    script = SRC / "servers" / "school_finance.py"
+    proc = subprocess.Popen(
+        [sys.executable, str(script)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _wait_for_port(8007, "colorado-school-finance", timeout=20)
+    yield proc
+    proc.terminate()
+    proc.wait()
+
+
 def _wait_for_port(port: int, name: str, timeout: int = 20) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:

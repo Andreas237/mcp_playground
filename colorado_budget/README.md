@@ -86,7 +86,7 @@ api_key_env = "NVIDIA_API_KEY"
 max_tokens  = 8096
 ```
 
-> **Tool-calling matters, and it varies by model *version*.** This is an *agent* — it depends on the model issuing tool calls. Claude, Devstral, and `nemotron-super-49b-v1.5` all drive the full ~16-tool set. But the earlier `nvidia/llama-3.3-nemotron-super-49b-v1` (no `.5`) returned a blank completion when handed all the tools at once — fixed in v1.5. The lesson: a model answering without ever calling a tool (or returning nothing) means weak/partial tool-call support, and a point release can change that entirely. Always verify a new model/version before trusting it — see [tests/README.md](tests/README.md#trying-different-models).
+> **Tool-calling matters, and it varies by model *version*.** This is an *agent* — it depends on the model issuing tool calls. Claude, Devstral, and `nemotron-super-49b-v1.5` all drive the full ~19-tool set (5 MCP servers + 2 inline tools). But the earlier `nvidia/llama-3.3-nemotron-super-49b-v1` (no `.5`) returned a blank completion when handed all the tools at once — fixed in v1.5. The lesson: a model answering without ever calling a tool (or returning nothing) means weak/partial tool-call support, and a point release can change that entirely. Always verify a new model/version before trusting it — see [tests/README.md](tests/README.md#trying-different-models).
 
 ---
 
@@ -158,6 +158,6 @@ colorado_budget/
     ├── agent.py           ← entry point; Strands agent wiring, --profile flag
     ├── model_config.py    ← reads config.toml, builds the selected model provider
     ├── utils.py           ← API key loading with env var fallback
-    ├── servers/           ← MCP servers (open-data, web-search, legislature, ospb)
+    ├── servers/           ← MCP servers (open-data, web-search, legislature, ospb, revenue)
     └── tools/             ← inline tools: fetch_webpage, fetch_and_parse_pdf
 ```

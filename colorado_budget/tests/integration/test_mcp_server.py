@@ -105,3 +105,81 @@ def test_ospb_tools_have_descriptions(ospb_server):
     tools = asyncio.run(_list_tools(8004))
     for t in tools:
         assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# Revenue & TABOR MCP server (port 8005)
+# ---------------------------------------------------------------------------
+
+def test_revenue_tools_list_returns_four_tools(revenue_server):
+    tools = asyncio.run(_list_tools(8005))
+    assert len(tools) == 4, f"Expected 4 revenue tools, got {len(tools)}: {tools}"
+
+
+def test_revenue_tools_have_correct_names(revenue_server):
+    tools = asyncio.run(_list_tools(8005))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "search_revenue",
+        "find_legislative_forecast",
+        "find_tax_expenditure_report",
+        "find_tabor_resources",
+    }
+
+
+def test_revenue_tools_have_descriptions(revenue_server):
+    tools = asyncio.run(_list_tools(8005))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# Federal Funds MCP server (port 8006)
+# ---------------------------------------------------------------------------
+
+def test_federal_tools_list_returns_four_tools(federal_funds_server):
+    tools = asyncio.run(_list_tools(8006))
+    assert len(tools) == 4, f"Expected 4 federal tools, got {len(tools)}: {tools}"
+
+
+def test_federal_tools_have_correct_names(federal_funds_server):
+    tools = asyncio.run(_list_tools(8006))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "colorado_federal_summary",
+        "federal_funding_by_agency",
+        "top_federal_recipients",
+        "search_federal_awards",
+    }
+
+
+def test_federal_tools_have_descriptions(federal_funds_server):
+    tools = asyncio.run(_list_tools(8006))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# School Finance MCP server (port 8007)
+# ---------------------------------------------------------------------------
+
+def test_school_finance_tools_list_returns_four_tools(school_finance_server):
+    tools = asyncio.run(_list_tools(8007))
+    assert len(tools) == 4, f"Expected 4 school-finance tools, got {len(tools)}: {tools}"
+
+
+def test_school_finance_tools_have_correct_names(school_finance_server):
+    tools = asyncio.run(_list_tools(8007))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "search_school_finance",
+        "find_school_finance_act",
+        "find_per_pupil_funding",
+        "find_finance_formula_resources",
+    }
+
+
+def test_school_finance_tools_have_descriptions(school_finance_server):
+    tools = asyncio.run(_list_tools(8007))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"

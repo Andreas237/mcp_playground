@@ -38,6 +38,9 @@ MCP_SERVERS = [
     {"name": "web-search",           "script": SRC_DIR / "servers" / "web_search.py",          "port": 8002},
     {"name": "colorado-legislature",  "script": SRC_DIR / "servers" / "legislature.py",        "port": 8003},
     {"name": "colorado-ospb",        "script": SRC_DIR / "servers" / "ospb.py",                "port": 8004},
+    {"name": "colorado-revenue",     "script": SRC_DIR / "servers" / "revenue.py",             "port": 8005},
+    {"name": "colorado-federal-funds", "script": SRC_DIR / "servers" / "federal_funds.py",      "port": 8006},
+    {"name": "colorado-school-finance", "script": SRC_DIR / "servers" / "school_finance.py",    "port": 8007},
 ]
 
 
@@ -83,10 +86,13 @@ def run_agent(question: str, profile: str | None = None) -> str:
         web_search  = MCPClient(lambda: streamablehttp_client("http://localhost:8002/mcp"))
         legislature = MCPClient(lambda: streamablehttp_client("http://localhost:8003/mcp"))
         ospb        = MCPClient(lambda: streamablehttp_client("http://localhost:8004/mcp"))
+        revenue     = MCPClient(lambda: streamablehttp_client("http://localhost:8005/mcp"))
+        federal     = MCPClient(lambda: streamablehttp_client("http://localhost:8006/mcp"))
+        school      = MCPClient(lambda: streamablehttp_client("http://localhost:8007/mcp"))
 
         agent = Agent(
             model=config.model,
-            tools=[open_data, web_search, legislature, ospb, fetch_webpage, fetch_and_parse_pdf],
+            tools=[open_data, web_search, legislature, ospb, revenue, federal, school, fetch_webpage, fetch_and_parse_pdf],
             system_prompt=config.system_prompt,
         )
         logger.info(f"Profile: {config.profile_name} ({config.provider}/{config.model_id})")

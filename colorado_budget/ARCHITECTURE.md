@@ -19,15 +19,40 @@ A research system that lets anyone ask broad, natural-language questions about C
 
 ---
 
-## Current State (Phase 1 — done)
+## Current State (implemented)
 
-A single Strands agent (`agent.py`) with four inline tools:
-- `list_datasets`, `get_dataset_metadata`, `query_dataset` — Socrata SODA API wrapper
-- `fetch_webpage` — HTML page fetcher for leg.colorado.gov and ospb.colorado.gov
+A single Strands agent ([`agent.py`](src/agent.py)) orchestrates **7 MCP servers** plus 2 inline tools. On each run the agent spawns every server as a subprocess (streamable-HTTP, one per port), connects with an `MCPClient`, runs the query, and shuts the servers down. The LLM is **configurable** per run via [`config.toml`](config.toml) (see [Decision 2](#decision-2--model--configurable-via-configtoml-)).
 
-**What works:** Discovery questions, broad trends, identifying the right documents to read.
+**What works now:** dataset discovery and trends (open-data); bill search, fiscal notes, and JBC appropriations (legislature); Governor's budget request and forecasts (OSPB); Legislative Council revenue forecast, TABOR, and tax expenditures (revenue); federal funding by agency/recipient (federal-funds); K-12 Total Program and the HB24-1448 formula (school-finance); and Exa web search. Exact line-item PDFs are reachable via `fetch_and_parse_pdf`.
 
-**What doesn't:** Exact line-item figures (PDFs behind a portal), bill-level fund-type tracking, internet search.
+**Still sparse:** current-year *actual* expenditures (TOPS checkbook is a non-tabular 403 dead end; we rely on appropriations + forecasts instead), and per-district data delivered as Excel (`fetch_and_parse_pdf` is PDF-only).
+
+---
+
+## Implemented MCP Servers & Port Map
+
+All servers live in [`src/servers/`](src/servers/), run on `streamable-http` transport, and are registered in `MCP_SERVERS` in [`agent.py`](src/agent.py). Each is independently runnable (`python servers/<name>.py --port <port>`) and reusable by Claude Code, not just this agent.
+
+| Port | Server (FastMCP name) | File | Tools | Data source |
+|------|----------------------|------|-------|-------------|
+| 8001 | `colorado-open-data` | `colorado_open_data.py` | `list_datasets`, `get_dataset_metadata`, `query_dataset` | data.colorado.gov (Socrata SODA) — no key |
+| 8002 | `web-search` | `web_search.py` | `search_web`, `search_colorado_government` | Exa neural search — `EXA_API_KEY` |
+| 8003 | `colorado-legislature` | `legislature.py` | `search_bills`, `get_bill_details`, `get_fiscal_note`, `find_appropriations_documents` | leg.colorado.gov + Exa |
+| 8004 | `colorado-ospb` | `ospb.py` | `search_ospb`, `find_governor_budget`, `find_revenue_forecast`, `find_budget_amendments` | ospb.colorado.gov + Exa |
+| 8005 | `colorado-revenue` | `revenue.py` | `search_revenue`, `find_legislative_forecast`, `find_tax_expenditure_report`, `find_tabor_resources` | Legislative Council / OSA / DOR + Exa |
+| 8006 | `colorado-federal-funds` | `federal_funds.py` | `colorado_federal_summary`, `federal_funding_by_agency`, `top_federal_recipients`, `search_federal_awards` | USAspending.gov v2 API — no key |
+| 8007 | `colorado-school-finance` | `school_finance.py` | `search_school_finance`, `find_school_finance_act`, `find_per_pupil_funding`, `find_finance_formula_resources` | CDE (ed.cde.state.co.us) + leg + Exa |
+
+**Inline tools** (in [`src/tools/`](src/tools/), not MCP — passed directly to the agent): `fetch_webpage(url)` and `fetch_and_parse_pdf(url, page_range, keyword_filter)`.
+
+### Implementation patterns
+
+- **Scraper servers** (legislature, ospb, revenue, school-finance): page-scrape known landing pages for document links → **Exa fallback** (host-agnostic, survives site reorganizations) → **HEAD-check** candidate URLs so only reachable docs are returned. Helpers `_fetch_page`, `_extract_*_links`/`_doc_links`, `_head_check`, `_get_exa` are duplicated per server by design (each owns its source). Discovery returns document URLs (and, for school-finance, HTML `pages`) which the agent then reads with `fetch_and_parse_pdf` / `fetch_webpage`.
+- **API servers** (open-data, federal-funds): hit a clean REST/JSON API directly and return structured results — no scraping, most reliable.
+- **Fiscal-year naming** is inconsistent across CO sources; servers carry helpers (`_fy_variants`, `_fy_time_period`, month/quarter maps) to match the many conventions ("2026-27", "FY2027", "fy26-27", federal Oct–Sep, etc.).
+- **All servers require `EXA_API_KEY`** except open-data and federal-funds. Keys load from `colorado_budget/.env` via `utils.load_api_keys` and are **never** committed (see security note).
+
+> **Security:** API keys live only in `colorado_budget/.env` (gitignored). Never put keys in `config.toml`, `ARCHITECTURE.md`, or any tracked file. Each model profile in `config.toml` references its key by env-var name (`api_key_env`), not value.
 
 ---
 
@@ -51,13 +76,19 @@ The current `colorado_open_data_tools.py` Strands tools will be promoted to an M
 
 ---
 
-### Decision 2: Model — Claude Sonnet ✓
+### Decision 2: Model — configurable via `config.toml` ✓
 
-**Primary model:** `claude-sonnet-4-6`. Reasoning quality matters more than cost for this use case — the agent needs to synthesize across sparse, inconsistent government data sources.
+The LLM is no longer hard-coded. [`config.toml`](config.toml) defines named **profiles** (provider, model ID, `api_key_env`, `max_tokens`) plus the shared `system_prompt`. Select per run with `python agent.py --profile <name>` or set `active_profile`. [`model_config.py`](src/model_config.py) reads the profile and builds the matching Strands provider.
 
-**Mistral Devstral** (free tier) is worth knowing about for future cost reduction, but it's optimized for code generation, not open-ended policy research synthesis. The Mistral API key (`MISTRAL_API_KEY`) is already in the environment if we want to experiment.
+| Profile | Provider | Model | Status |
+|---------|----------|-------|--------|
+| `claude` (default) | Anthropic | `claude-sonnet-4-6` | ✅ verified, full toolset |
+| `devstral` | OpenAI-compatible → `api.mistral.ai/v1` | `devstral-small-latest` | ✅ verified |
+| `nvidia` | OpenAI-compatible → NVIDIA NIM | `nvidia/llama-3.3-nemotron-super-49b-v1.5` | ✅ verified |
 
-**Haiku** (`claude-haiku-4-5`) is a reasonable choice for a lightweight "planning" or "reflection" step if we add one (see Decision 3 below).
+**Primary remains `claude-sonnet-4-6`** — reasoning quality matters most for synthesizing sparse, inconsistent government data. Add any OpenAI-compatible endpoint (OpenRouter, local vLLM/Ollama) by copying a profile block.
+
+**Tool-calling is version-sensitive:** the agent exposes 27 tools at once (25 across 7 servers + 2 inline). `nemotron-super-49b-**v1**` returned an empty completion on the full toolset; **v1.5** fixed it. Always verify a new model/version before trusting it. Devstral uses the `openai` provider (not Strands' `MistralModel`) because the project pins `mistralai>=2.2.0`, incompatible with that provider.
 
 ---
 
@@ -81,6 +112,8 @@ This gives the auditability benefit of a planning step at zero extra cost — on
 ---
 
 ## Proposed MCP Servers
+
+> **Historical / design rationale.** All of these are now implemented (and the set has grown to 7 — see [Implemented MCP Servers & Port Map](#implemented-mcp-servers--port-map) for current ports and tool names). Tool names below reflect the original proposal and may differ from what shipped; the port map is authoritative. Kept here for the design reasoning, especially the **Fund Types** table, which still drives the agent's analysis.
 
 ### 1. `colorado-open-data` (Socrata SODA API)
 **Already implemented as Strands tools — promote to MCP server.**
@@ -267,23 +300,31 @@ These are unsettled — add your thoughts here.
 
 ---
 
-## File Layout (target state)
+## File Layout (current)
 
 ```
 colorado_budget/
 ├── README.md
 ├── ARCHITECTURE.md            ← this file
+├── config.toml               ← model profiles + shared system prompt
+├── .env                      ← API keys (gitignored — never committed)
 └── src/
-    ├── agent.py               ← orchestrator agent (Claude Sonnet)
-    ├── utils.py               ← API key loading
+    ├── agent.py              ← orchestrator: spawns servers, wires MCPClients, runs query
+    ├── model_config.py       ← reads config.toml profile → builds Strands model
+    ├── utils.py              ← API key loading (.env → env vars)
     │
-    ├── mcp/                   ← MCP servers (one file per data source)
-    │   ├── colorado_open_data.py   ← Socrata SODA (promoted from tools)
-    │   ├── legislature.py          ← leg.colorado.gov bills, fiscal notes, Long Bill
-    │   ├── ospb.py                 ← ospb.colorado.gov budget requests
-    │   └── web_search.py           ← Tavily/Exa or targeted scraping
+    ├── servers/              ← MCP servers (one file per data source; ports 8001–8007)
+    │   ├── colorado_open_data.py   ← 8001  Socrata SODA
+    │   ├── web_search.py           ← 8002  Exa
+    │   ├── legislature.py          ← 8003  leg.colorado.gov bills, fiscal notes, JBC
+    │   ├── ospb.py                 ← 8004  Governor's budget, forecasts
+    │   ├── revenue.py              ← 8005  LCS forecast, TABOR, tax expenditures
+    │   ├── federal_funds.py        ← 8006  USAspending.gov
+    │   └── school_finance.py       ← 8007  CDE K-12 funding, HB24-1448
     │
-    └── tools/                 ← inline Strands tools (not promoted to MCP)
-        ├── fetch_webpage.py   ← ad-hoc HTML fetcher
-        └── pdf_parser.py      ← pdfplumber wrapper (Phase 2)
+    └── tools/                ← inline Strands tools (not MCP)
+        ├── fetch_webpage.py  ← HTML fetcher/stripper
+        └── pdf_parser.py     ← pdfplumber wrapper (fetch_and_parse_pdf)
 ```
+
+Tests live in `tests/` (`unit/`, `integration/`, `evals/`, `manual/`); each server has unit tests (mocked network) and an integration test that boots the subprocess and checks its tool list. See [tests/README.md](tests/README.md).
