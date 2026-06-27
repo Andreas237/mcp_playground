@@ -185,6 +185,21 @@ def cdot_server(api_keys):
     proc.wait()
 
 
+@pytest.fixture(scope="session")
+def data_dot_gov_server(api_keys):
+    """Start the data-dot-gov MCP server and yield; stop on teardown."""
+    script = SRC / "servers" / "data-dot-gov.py"
+    proc = subprocess.Popen(
+        [sys.executable, str(script)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _wait_for_port(8012, "data-dot-gov", timeout=20)
+    yield proc
+    proc.terminate()
+    proc.wait()
+
+
 def _wait_for_port(port: int, name: str, timeout: int = 20) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:

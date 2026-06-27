@@ -45,6 +45,7 @@ MCP_SERVERS = [
     {"name": "colorado-parks-wildlife", "script": SRC_DIR / "servers" / "cpw.py",             "port": 8009},
     {"name": "colorado-agriculture", "script": SRC_DIR / "servers" / "agriculture.py",        "port": 8010},
     {"name": "colorado-cdot",        "script": SRC_DIR / "servers" / "cdot.py",                "port": 8011},
+    {"name": "data-dot-gov",        "script": SRC_DIR / "servers" / "data-dot-gov.py",                "port": 8012},
 ]
 
 
@@ -97,10 +98,11 @@ def run_agent(question: str, profile: str | None = None) -> str:
         cpw         = MCPClient(lambda: streamablehttp_client("http://localhost:8009/mcp"))
         agriculture = MCPClient(lambda: streamablehttp_client("http://localhost:8010/mcp"))
         cdot        = MCPClient(lambda: streamablehttp_client("http://localhost:8011/mcp"))
+        data_gov    = MCPClient(lambda: streamablehttp_client("http://localhost:8012/mcp"))
 
         agent = Agent(
             model=config.model,
-            tools=[open_data, web_search, legislature, ospb, revenue, federal, school, hcpf, cpw, agriculture, cdot, fetch_webpage, fetch_and_parse_pdf],
+            tools=[open_data, web_search, legislature, ospb, revenue, federal, school, hcpf, cpw, agriculture, cdot, data_gov, fetch_webpage, fetch_and_parse_pdf],
             system_prompt=config.system_prompt,
         )
         logger.info(f"Profile: {config.profile_name} ({config.provider}/{config.model_id})")

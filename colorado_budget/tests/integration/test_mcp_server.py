@@ -287,3 +287,34 @@ def test_cdot_tools_have_descriptions(cdot_server):
     tools = asyncio.run(_list_tools(8011))
     for t in tools:
         assert t["description"], f"Tool {t['name']} has no description"
+
+
+# ---------------------------------------------------------------------------
+# data.gov MCP server (port 8012)
+# ---------------------------------------------------------------------------
+
+def test_data_dot_gov_tools_list_returns_nine_tools(data_dot_gov_server):
+    tools = asyncio.run(_list_tools(8012))
+    assert len(tools) == 9, f"Expected 9 data.gov tools, got {len(tools)}: {tools}"
+
+
+def test_data_dot_gov_tools_have_correct_names(data_dot_gov_server):
+    tools = asyncio.run(_list_tools(8012))
+    names = {t["name"] for t in tools}
+    assert names == {
+        "get_number_data_publishing_organizations",
+        "get_number_data_publishing_organization_url_slugs",
+        "search_datasets",
+        "get_keywords",
+        "search_locations",
+        "get_location_geometry",
+        "get_harvest_record",
+        "get_harvest_record_raw",
+        "get_harvest_record_transformed",
+    }
+
+
+def test_data_dot_gov_tools_have_descriptions(data_dot_gov_server):
+    tools = asyncio.run(_list_tools(8012))
+    for t in tools:
+        assert t["description"], f"Tool {t['name']} has no description"
