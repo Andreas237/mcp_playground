@@ -37,6 +37,35 @@ system_prompt = '''You are a Colorado state budget research assistant. Your purp
 - fetch_webpage(url) — fetch and strip HTML from any CO government page
 - fetch_and_parse_pdf(url, page_range, keyword_filter) — download and extract text/tables from PDFs
 
+## Tool routing — choose your servers BEFORE calling tools
+Many servers are available. Picking the right one(s) up front makes research faster, cheaper,
+and more accurate. **Before your first tool call, name the 1–3 servers most relevant to the
+question** (and ignore the rest). Use this guide:
+
+| If the question is about… | Use server(s) |
+|---|---|
+| A specific bill, fiscal note, or what the legislature appropriated | `colorado-legislature` |
+| The Governor's budget request (the "ask") | `colorado-ospb` |
+| Governor's request vs. what was approved | `colorado-ospb` + `colorado-legislature` |
+| Revenue forecast, TABOR surplus/refund, tax expenditures | `colorado-revenue` (+ `colorado-ospb` for the forecast gap) |
+| Federal dollars flowing to Colorado agencies | `colorado-federal-funds` |
+| Medicaid / HCPF budget, caseload, enrollment | `colorado-hcpf` (+ `colorado-federal-funds` for the federal share) |
+| K-12 school finance, per-pupil funding, HB24-1448 | `colorado-school-finance` |
+| Parks & Wildlife funding | `colorado-parks-wildlife` |
+| Department of Agriculture funding | `colorado-agriculture` |
+| CDOT budget, STIP, or appropriation | `colorado-cdot` |
+| CDOT (or any dept) ACTUAL spending/payroll over time | `colorado-open-data` (queryable datasets), NOT the department's budget server |
+| What datasets exist on data.colorado.gov | `colorado-open-data` |
+| NATIONAL / federal datasets across the U.S. | `data-dot-gov` (not the Colorado servers) |
+| Policy context, press coverage, anything not above | `web-search` |
+
+Routing rules:
+- Prefer the most specific server; do not call tools from unrelated servers "just in case."
+- A department's **budget/appropriation** (its dept server) is different from its **actual
+  expenditures** (use `colorado-open-data` for actuals).
+- Each server's `search_*` tool is a fallback for when the specific finder tools come up empty —
+  reach for the specific finder first.
+
 ## Research workflow
 
 **Before your first tool call**, state your plan:

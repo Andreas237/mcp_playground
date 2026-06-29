@@ -23,51 +23,38 @@ Research workflows are adaptive, so we default to **`in_order_match_scorer`** fo
 multi-step cases and **`any_order_match_scorer`** for cross-server cases where the
 order is genuinely interchangeable.
 
-## Install
+## Implemented runner — how to run
 
-`strands_evals` is **not** in the project venv yet. To run these:
+The plan in this folder is now executable. Three files implement it:
+
+| File | What it is |
+|------|-----------|
+| [`dataset.py`](dataset.py) | The runnable cases — `TrajectoryCase`s consolidating the per-server `.md` plans, plus composition cases (two servers) and routing guards (forbidden servers). |
+| [`_tool_server_map.py`](_tool_server_map.py) | Maps every tool → its MCP server, so scoring works at the **server** level (`servers_touched`). |
+| [`_runner.py`](_runner.py) | Brings the stack up once, runs each case through a fresh `Agent`, extracts the trajectory via `agent.extract_trajectory`, scores server routing, writes `results/`. |
 
 ```bash
-.venv/bin/python -m pip install strands-evals    # (uv: uv add --dev strands-evals)
+cd colorado_budget
+python tests/evals/trajectory/_runner.py --list                 # list cases (no LLM)
+python tests/evals/trajectory/_runner.py                        # all cases, default profile
+python tests/evals/trajectory/_runner.py --profile claude --cases hcpf_fund_split,forecast_gap
+python tests/evals/trajectory/_runner.py --limit 3              # quick subset
 ```
 
-(They are written to be runnable once the package is present; until then this is a
-specification. Unit + integration tests do not depend on `strands_evals`.)
+Results (per-case PASS/FAIL, servers touched vs expected, forbidden hits, tool counts)
+print live and are written to `results/trajectory_<profile>_<timestamp>.{json,md}`, flushed
+after each case so a partial run is never lost.
 
-## Reusable runner
+**Scoring (server-level):** a case passes when every `expected_servers` entry appears in the
+trajectory, no `forbidden_servers` entry appears, and the agent actually called ≥1 tool. This
+is intentionally more robust than pinning exact tool names (the agent may pick a different but
+valid tool on the same server).
 
-Each per-server plan defines a list of `Case`s. The harness below is identical across
-servers — only the cases differ. It boots the real agent (which spawns the MCP
-servers), runs each question, extracts the tool trajectory from `agent.messages`, and
-scores it.
-
-```python
-# tests/evals/trajectory/_runner.py  (sketch)
-from strands_evals import Case, Experiment
-from strands_evals.evaluators import TrajectoryEvaluator, OutputEvaluator
-from strands_evals.extractors import tools_use_extractor
-
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
-from agent import run_agent_collecting  # thin wrapper that returns (text, agent)
-
-def task(case: Case) -> dict:
-    text, agent = run_agent_collecting(case.input)          # uses default profile (claude)
-    trajectory = tools_use_extractor.extract_agent_tools_used_from_messages(agent.messages)
-    return {"output": text, "trajectory": trajectory}
-
-def run(cases):
-    experiment = Experiment(cases=cases, evaluators=[
-        TrajectoryEvaluator(rubric="in_order_match_scorer; partial credit for subset"),
-        OutputEvaluator(rubric="answer contains the expected facts/figures"),
-    ])
-    return experiment.run_evaluations(task)
-```
-
-> `run_agent_collecting` is a small helper to add to `agent.py` that returns the
-> `Agent` object alongside the answer (today `run_agent` returns only the string).
-> Trajectory evals need `agent.messages`, hence the wrapper.
+The runner builds on the agent's own helpers — `start_servers` / `make_mcp_clients` /
+`build_agent` / `extract_trajectory` in [`src/agent.py`](../../../src/agent.py) — so it does
+not depend on the `strands_evals` package. (`strands_evals` is installed and its
+`Case`/`Experiment`/`TrajectoryEvaluator` can wrap this runner later for LLM-judged output
+scoring; the per-server `.md` files show that `Case` form.)
 
 ## Cost & cadence
 

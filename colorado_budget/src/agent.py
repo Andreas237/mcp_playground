@@ -65,57 +65,91 @@ def _wait_for_server(port: int, name: str, timeout: int = 20) -> bool:
     return False
 
 
-def run_agent(question: str, profile: str | None = None) -> str:
-    load_api_keys()
-    config = load_agent_config(profile)
+# ---------------------------------------------------------------------------
+# Reusable building blocks (used by run_agent and by the eval harness, which
+# needs to bring the server stack up once and build many fresh agents).
+# ---------------------------------------------------------------------------
 
-    # Start MCP servers as subprocesses
+def start_servers() -> list[subprocess.Popen]:
+    """Spawn every MCP server as a subprocess and wait until each is reachable."""
     processes = []
     for srv in MCP_SERVERS:
         logger.info(f"Starting {srv['name']} on port {srv['port']}")
-        p = subprocess.Popen(
+        processes.append(subprocess.Popen(
             [sys.executable, str(srv["script"])],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-        )
-        processes.append(p)
+        ))
+    for srv in MCP_SERVERS:
+        if not _wait_for_server(srv["port"], srv["name"]):
+            logger.error(f"Failed to start {srv['name']} — proceeding without it")
+    return processes
 
+
+def stop_servers(processes: list[subprocess.Popen]) -> None:
+    for p in processes:
+        p.terminate()
+    logger.info("MCP servers stopped")
+
+
+def make_mcp_clients() -> dict[str, MCPClient]:
+    """Create one MCPClient per server, keyed by server name (order = MCP_SERVERS).
+
+    Clients are cheap and connect to the already-running server subprocesses, so
+    the eval harness makes fresh clients + a fresh Agent per case (servers stay up).
+    """
+    clients: dict[str, MCPClient] = {}
+    for srv in MCP_SERVERS:
+        port = srv["port"]
+        clients[srv["name"]] = MCPClient(
+            lambda port=port: streamablehttp_client(f"http://localhost:{port}/mcp")
+        )
+    return clients
+
+
+def build_agent(clients: dict[str, MCPClient], config) -> Agent:
+    """Assemble an Agent from the MCP clients + inline tools for a given config."""
+    return Agent(
+        model=config.model,
+        tools=[*clients.values(), fetch_webpage, fetch_and_parse_pdf],
+        system_prompt=config.system_prompt,
+    )
+
+
+def extract_trajectory(agent: Agent) -> list[str]:
+    """Return the ordered list of tool names the agent called, from agent.messages.
+
+    Each tool call appears as an assistant content block with a 'toolUse' entry.
+    Robust to dict- or object-shaped content across Strands versions.
+    """
+    trajectory: list[str] = []
+    for msg in getattr(agent, "messages", []) or []:
+        content = msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
+        for block in content or []:
+            tu = block.get("toolUse") if isinstance(block, dict) else getattr(block, "toolUse", None)
+            if not tu:
+                continue
+            name = tu.get("name") if isinstance(tu, dict) else getattr(tu, "name", None)
+            if name:
+                trajectory.append(name)
+    return trajectory
+
+
+def run_agent(question: str, profile: str | None = None) -> str:
+    load_api_keys()
+    config = load_agent_config(profile)
+    processes = start_servers()
     try:
-        # Wait for each server to be ready
-        for srv in MCP_SERVERS:
-            if not _wait_for_server(srv["port"], srv["name"]):
-                logger.error(f"Failed to start {srv['name']} — proceeding without it")
-
-        # MCPClient instances — Agent manages their lifecycle (do NOT use as context manager here)
-        open_data   = MCPClient(lambda: streamablehttp_client("http://localhost:8001/mcp"))
-        web_search  = MCPClient(lambda: streamablehttp_client("http://localhost:8002/mcp"))
-        legislature = MCPClient(lambda: streamablehttp_client("http://localhost:8003/mcp"))
-        ospb        = MCPClient(lambda: streamablehttp_client("http://localhost:8004/mcp"))
-        revenue     = MCPClient(lambda: streamablehttp_client("http://localhost:8005/mcp"))
-        federal     = MCPClient(lambda: streamablehttp_client("http://localhost:8006/mcp"))
-        school      = MCPClient(lambda: streamablehttp_client("http://localhost:8007/mcp"))
-        hcpf        = MCPClient(lambda: streamablehttp_client("http://localhost:8008/mcp"))
-        cpw         = MCPClient(lambda: streamablehttp_client("http://localhost:8009/mcp"))
-        agriculture = MCPClient(lambda: streamablehttp_client("http://localhost:8010/mcp"))
-        cdot        = MCPClient(lambda: streamablehttp_client("http://localhost:8011/mcp"))
-        data_gov    = MCPClient(lambda: streamablehttp_client("http://localhost:8012/mcp"))
-
-        agent = Agent(
-            model=config.model,
-            tools=[open_data, web_search, legislature, ospb, revenue, federal, school, hcpf, cpw, agriculture, cdot, data_gov, fetch_webpage, fetch_and_parse_pdf],
-            system_prompt=config.system_prompt,
-        )
+        clients = make_mcp_clients()
+        agent = build_agent(clients, config)
         logger.info(f"Profile: {config.profile_name} ({config.provider}/{config.model_id})")
         logger.info(f"Question: {question}")
         response = agent(question)
         answer = str(response)
         print(f"\n{'='*60}\nAnswer:\n{'='*60}\n{answer}\n")
         return answer
-
     finally:
-        for p in processes:
-            p.terminate()
-        logger.info("MCP servers stopped")
+        stop_servers(processes)
 
 
 if __name__ == "__main__":
